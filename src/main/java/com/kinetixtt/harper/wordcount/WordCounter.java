@@ -9,12 +9,12 @@ import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- *
  * Class is threadsafe.
  * <p>
  * TODO: confirm assumptions:
  * 1. words are considered case insensitive
  * 2. null and empty string is not considered valid words
+ * 3. some caching of latest words will be implemented at Translator level down the line
  */
 @Component
 public class WordCounter {
@@ -56,7 +56,7 @@ public class WordCounter {
 
     public int countOfWord(String word) {
         if (word == null) {
-            throw new IllegalArgumentException("Must specify word to find count of");
+            throw new IllegalArgumentException("Must specify word for finding count");
         }
         return wordCount.getOrDefault(translator.translate(word.toLowerCase()), 0);
     }

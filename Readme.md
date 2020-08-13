@@ -2,8 +2,8 @@
 
 Project skeleton created from [Spring Initializr](https://start.spring.io/)
 
-Run tests by executing
+Build and run tests by executing
  
     mvn clean install 
     
-
+Interesting code for this assigment can be found in WordCounter and WordCounterTest.
