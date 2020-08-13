@@ -6,7 +6,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 /**
  * Class is threadsafe.
@@ -20,7 +22,7 @@ import java.util.concurrent.ConcurrentMap;
 public class WordCounter {
     private static final String EMPTY_STRING = "";
 
-    private final ConcurrentMap<String, Integer> wordCount = Maps.newConcurrentMap();
+    private final ConcurrentMap<String, Long> wordCount = Maps.newConcurrentMap();
 
     private final Translator translator;
 
@@ -36,28 +38,23 @@ public class WordCounter {
         List<String> wordsAsList = Arrays.asList(words.clone());
         if (wordsAsList.isEmpty()) {
             throw new IllegalArgumentException("Specify one or more words");
-        } else if(wordsAsList.contains(null) || wordsAsList.contains(EMPTY_STRING)) {
+        } else if (wordsAsList.contains(null) || wordsAsList.contains(EMPTY_STRING)) {
             throw new IllegalArgumentException("Specified parameters must be valid words");
         } else if (wordsAsList.stream().anyMatch(word -> word.chars().anyMatch(ch -> !Character.isLetter(ch)))) {
             throw new IllegalArgumentException("Specified words must only contain alphabetic characters");
         }
 
-        wordsAsList.stream()
-                .map(word -> translator.translate(word.toLowerCase()))
-                .forEach(word -> wordCount.compute(word, (k, v) -> {
-                    // update map in threadsafe manner
-                    if (v == null) {
-                        return 1;
-                    } else {
-                        return v + 1;
-                    }
-                }));
+        // convert to word by count upfront so we spend less time locking map in next step (fewer words to loop through)
+        Map<String, Long> providedWordCount = wordsAsList.stream().map(word -> translator.translate(word.toLowerCase())).collect(Collectors.groupingBy(k -> k, Collectors.counting()));
+
+        // update count in threadsafe manner with minimal blocking
+        providedWordCount.entrySet().stream().forEach(word -> wordCount.merge(word.getKey(), word.getValue(), (prev, current) -> prev + current));
     }
 
-    public int countOfWord(String word) {
+    public long countOfWord(String word) {
         if (word == null) {
             throw new IllegalArgumentException("Must specify word for finding count");
         }
-        return wordCount.getOrDefault(translator.translate(word.toLowerCase()), 0);
+        return wordCount.getOrDefault(translator.translate(word.toLowerCase()), 0L);
     }
 }
